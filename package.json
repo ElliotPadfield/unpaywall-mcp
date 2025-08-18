@@ -1,6 +1,6 @@
 {
   "name": "unpaywall-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "MCP server for Unpaywall: DOI metadata, title search, OA links, and PDF text extraction",
   "type": "module",
@@ -21,8 +21,12 @@
     "README.md",
     "LICENSE"
   ],
-  "engines": { "node": ">=18" },
-  "publishConfig": { "access": "public" },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "keywords": [
     "mcp",
     "model-context-protocol",
