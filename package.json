@@ -35,6 +35,15 @@
     "open-access"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ElliotPadfield/unpaywall-mcp.git"
+  },
+  "homepage": "https://github.com/ElliotPadfield/unpaywall-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/ElliotPadfield/unpaywall-mcp/issues"
+  },
+  "author": "Elliot Padfield",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "pdf-parse": "^1.1.1"

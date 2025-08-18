@@ -1,4 +1,8 @@
 # Unpaywall MCP Server
+[![npm version](https://img.shields.io/npm/v/unpaywall-mcp.svg)](https://www.npmjs.com/package/unpaywall-mcp)
+[![CI](https://github.com/ElliotPadfield/unpaywall-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ElliotPadfield/unpaywall-mcp/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/unpaywall-mcp.svg)](LICENSE)
+[![node >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](#requirements)
 
 An MCP (Model Context Protocol) server exposing Unpaywall tools so AI clients can:
 
@@ -6,6 +10,24 @@ An MCP (Model Context Protocol) server exposing Unpaywall tools so AI clients ca
 - Search article titles
 - Retrieve best OA fulltext links
 - Download and extract text from OA PDFs
+
+## Quickstart (npx)
+
+Add this to your MCP client config (Claude Desktop example):
+
+```jsonc
+{
+  "mcpServers": {
+    "unpaywall": {
+      "command": "npx",
+      "args": ["-y", "unpaywall-mcp"],
+      "env": { "UNPAYWALL_EMAIL": "you@example.com" }
+    }
+  }
+}
+```
+
+Then try the tools: `unpaywall_search_titles`, `unpaywall_get_fulltext_links`, `unpaywall_fetch_pdf_text`.
 
 ## Requirements
 
