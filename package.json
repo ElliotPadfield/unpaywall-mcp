@@ -1,15 +1,28 @@
 {
   "name": "unpaywall-mcp",
   "version": "0.1.0",
-  "private": true,
+  "private": false,
   "description": "MCP server for Unpaywall: DOI metadata, title search, OA links, and PDF text extraction",
   "type": "module",
   "main": "dist/index.js",
+  "exports": "./dist/index.js",
+  "bin": {
+    "unpaywall-mcp": "bin/unpaywall-mcp.js"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
   },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": { "node": ">=18" },
+  "publishConfig": { "access": "public" },
   "keywords": [
     "mcp",
     "model-context-protocol",

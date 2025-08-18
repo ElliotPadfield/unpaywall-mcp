@@ -123,14 +123,30 @@ Depending on your MCP client, the structure differs; the core payloads are:
 
 ## Configure in an MCP client
 
-Example config for Claude Desktop (or any MCP client supporting stdio):
+Recommended (no-build) config for Claude Desktop using npm/npx:
+
+```jsonc
+{
+  "mcpServers": {
+    "unpaywall": {
+      "command": "npx",
+      "args": ["-y", "unpaywall-mcp"],
+      "env": {
+        "UNPAYWALL_EMAIL": "you@example.com"
+      }
+    }
+  }
+}
+```
+
+Alternative (local repo) config using the compiled dist:
 
 ```jsonc
 {
   "mcpServers": {
     "unpaywall": {
       "command": "node",
-      "args": ["dist/index.js"],
+      "args": ["/absolute/path/to/dist/index.js"],
       "env": {
         "UNPAYWALL_EMAIL": "you@example.com"
       }
@@ -150,3 +166,20 @@ After adding, ask your client to list tools and try:
 - Respect Unpaywall's rate limits and usage guidelines: https://unpaywall.org/products/api
 - The server uses stdio transport and `@modelcontextprotocol/sdk`.
 - Set `UNPAYWALL_EMAIL` or pass `email` per call so Unpaywall can contact you about usage.
+
+## Maintainers: publish to npm
+
+```bash
+# 1) Build the project (also runs automatically on publish)
+npm run build
+
+# 2) Bump version (choose patch/minor/major)
+npm version patch
+
+# 3) Publish (ensure you are logged in: npm login)
+npm publish --access public
+
+# 4) Tag a release on GitHub (optional, recommended)
+```
+
+Users can then configure their MCP client with `npx -y unpaywall-mcp` as shown above. No clone or build required.
