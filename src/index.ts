@@ -4,7 +4,11 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import pdfParse from "pdf-parse";
+import { createRequire } from "module";
+import type pdfParseType from "pdf-parse";
+
+const require = createRequire(import.meta.url);
+const pdfParse: typeof pdfParseType = require("pdf-parse");
 
 // Tool name constants
 const TOOL_GET_BY_DOI = "unpaywall_get_by_doi" as const;
