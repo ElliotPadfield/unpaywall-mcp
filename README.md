@@ -11,6 +11,10 @@ An MCP (Model Context Protocol) server exposing Unpaywall tools so AI clients ca
 - Retrieve best OA fulltext links
 - Download and extract text from OA PDFs
 
+<a href="https://glama.ai/mcp/servers/@ElliotPadfield/unpaywall-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@ElliotPadfield/unpaywall-mcp/badge" alt="Unpaywall Server MCP server" />
+</a>
+
 ## Quickstart (npx)
 
 Add this to your MCP client config (Claude Desktop example):
