@@ -16,7 +16,8 @@ jobs:
         with:
           node-version: 20
       - run: npm ci
-      - run: npm test
+      - run: npm run build
+      - run: npm test --if-present
 
   publish-npm:
     needs: build

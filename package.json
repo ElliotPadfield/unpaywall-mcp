@@ -1,6 +1,6 @@
 {
   "name": "unpaywall-mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": false,
   "description": "MCP server for Unpaywall: DOI metadata, title search, OA links, and PDF text extraction",
   "type": "module",
