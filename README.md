@@ -29,25 +29,24 @@ Add this to your MCP client config (Claude Desktop example):
 
 Then try the tools: `unpaywall_search_titles`, `unpaywall_get_fulltext_links`, `unpaywall_fetch_pdf_text`.
 
+You don't need to clone this repo or run `npm install` — `npx` handles fetching and caching on first call.
+
 ## Requirements
 
-- Node.js 18+
-- An email address for Unpaywall requests (they require it for polite usage).
+- Node.js 18+ (for `npx`)
+- An email address for Unpaywall / OpenAlex requests (required by Unpaywall, used for the OpenAlex polite pool).
 
-## Setup
+## Local development (contributors only)
+
+End users should use the npx config above. Contributors building from source:
 
 ```bash
-# Install deps
 npm install
-
-# Build
 npm run build
-
-# Run (stdio transport, as required by MCP clients)
-UNPAYWALL_EMAIL=you@example.com npm start
+UNPAYWALL_EMAIL=you@example.com npm start   # stdio transport, as required by MCP clients
 ```
 
-For development with hot-run (no build step):
+Hot-run (no build step):
 
 ```bash
 UNPAYWALL_EMAIL=you@example.com npm run dev
@@ -65,13 +64,14 @@ UNPAYWALL_EMAIL=you@example.com npm run dev
 
 ### unpaywall_search_titles
 
-- Description: Search Unpaywall for article titles matching a query (50 results/page)
+- Description: Search article titles and return Unpaywall-style OA metadata for each hit (50 results/page)
 - Input schema:
   - `query` (string, required): title query
   - `is_oa` (boolean, optional): if true, only OA results; if false, only closed; omit for all
   - `page` (integer >= 1, optional): page number
   - `email` (string, optional): overrides `UNPAYWALL_EMAIL`
-- Output: JSON search results from `GET https://api.unpaywall.org/v2/search`
+- Output: JSON matching the Unpaywall search shape — `results[].response` is a DOI-style record (`doi`, `title`, `is_oa`, `oa_status`, `best_oa_location`, `oa_locations`), with `score` and `snippet` per result. `_source: "openalex"` marks the upstream.
+- Note: Backed by OpenAlex's `/works` endpoint because Unpaywall's own `/v2/search` has been returning HTTP 500 since its May 2025 rewrite. Unpaywall now runs as a subroutine of OpenAlex, so this is the canonical modern equivalent.
 
 ### unpaywall_get_fulltext_links
 
