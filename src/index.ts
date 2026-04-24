@@ -225,7 +225,7 @@ async function main() {
         const doi = normalizeDoi(rawDoi);
         const data = await fetchUnpaywallByDoi(doi, email);
         return {
-          content: [{ type: "json", json: data }],
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       }
       if (tool === TOOL_SEARCH_TITLES) {
@@ -241,7 +241,7 @@ async function main() {
         const page = args.page && Number.isFinite(args.page) ? Math.max(1, Math.floor(Number(args.page))) : undefined;
         const is_oa = typeof args.is_oa === "boolean" ? args.is_oa : undefined;
         const data = await searchUnpaywallTitles({ query, email, is_oa, page });
-        return { content: [{ type: "json", json: data }] };
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       if (tool === TOOL_GET_FULLTEXT_LINKS) {
         const args = (req.params.arguments ?? {}) as Partial<GetByDoiArgs>;
@@ -270,7 +270,7 @@ async function main() {
           best_oa_location: best,
           oa_locations: locations,
         };
-        return { content: [{ type: "json", json: result }] };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       }
       if (tool === TOOL_FETCH_PDF_TEXT) {
         const args = (req.params.arguments ?? {}) as Partial<FetchPdfTextArgs>;
@@ -315,7 +315,7 @@ async function main() {
             metadata: parsed.metadata ?? undefined,
           },
         };
-        return { content: [{ type: "json", json: output }] };
+        return { content: [{ type: "text", text: JSON.stringify(output, null, 2) }] };
       }
 
       return {
