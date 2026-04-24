@@ -106,7 +106,12 @@ async function searchTitlesViaOpenAlex(args: { query: string; email: string; is_
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
-    const filterParts = [`title.search:${query}`];
+    // OpenAlex joins filters with commas, so any comma inside the query would
+    // be parsed as a filter delimiter (verified: produces HTTP 400 "Invalid
+    // query parameter"). Collapse commas to spaces — OpenAlex AND-joins words
+    // within a single title.search term, which matches Unpaywall's default.
+    const safeQuery = query.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    const filterParts = [`title.search:${safeQuery}`];
     if (typeof is_oa === "boolean") filterParts.push(`is_oa:${is_oa}`);
     const params = new URLSearchParams();
     params.set("filter", filterParts.join(","));
@@ -165,7 +170,10 @@ function mapOpenAlexWorksToUnpaywallSearch(data: any, query: string) {
     const title: string = w?.title ?? w?.display_name ?? "";
     const openAccess = w?.open_access ?? {};
     const best = mapOpenAlexLocationToUnpaywall(w?.best_oa_location);
-    const locs: any[] = Array.isArray(w?.locations) ? w.locations : [];
+    // Unpaywall's oa_locations is OA-only by definition; OpenAlex's
+    // work.locations returns every location including closed publisher landing
+    // pages, so filter on is_oa first to avoid mislabeling paywalled links.
+    const locs: any[] = Array.isArray(w?.locations) ? w.locations.filter((l: any) => l?.is_oa === true) : [];
     const oa_locations = locs.map(mapOpenAlexLocationToUnpaywall).filter((l) => l && (l.url || l.url_for_pdf));
     return {
       response: {
