@@ -95,26 +95,108 @@ async function downloadPdfAsBuffer(url: string, maxBytes = 30 * 1024 * 1024) {
   }
 }
 
-async function searchUnpaywallTitles(args: { query: string; email: string; is_oa?: boolean; page?: number }) {
+// Unpaywall's own /v2/search endpoint has been returning HTTP 500 for every
+// query since at least the May 2025 "Walden" rewrite, which appears to have
+// ported only the DOI lookup path forward. OpenAlex (now Unpaywall's parent
+// codebase) exposes an equivalent title search via /works that returns the
+// same OA fields. We hit that and remap the response into the Unpaywall
+// search shape so existing callers continue to work unchanged.
+async function searchTitlesViaOpenAlex(args: { query: string; email: string; is_oa?: boolean; page?: number }) {
   const { query, email, is_oa, page } = args;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 20_000);
   try {
+    // OpenAlex joins filters with commas, so any comma inside the query would
+    // be parsed as a filter delimiter (verified: produces HTTP 400 "Invalid
+    // query parameter"). Collapse commas to spaces — OpenAlex AND-joins words
+    // within a single title.search term, which matches Unpaywall's default.
+    const safeQuery = query.replace(/,/g, " ").replace(/\s+/g, " ").trim();
+    const filterParts = [`title.search:${safeQuery}`];
+    if (typeof is_oa === "boolean") filterParts.push(`is_oa:${is_oa}`);
     const params = new URLSearchParams();
-    params.set("query", query);
-    if (typeof is_oa === "boolean") params.set("is_oa", String(is_oa));
+    params.set("filter", filterParts.join(","));
+    params.set("per-page", "50"); // match Unpaywall's documented page size
     if (page && Number.isFinite(page) && page > 1) params.set("page", String(Math.floor(page)));
-    params.set("email", email);
-    const url = `https://api.unpaywall.org/v2/search?${params.toString()}`;
+    if (email) params.set("mailto", email);
+    const url = `https://api.openalex.org/works?${params.toString()}`;
     const resp = await fetch(url, { signal: controller.signal, headers: { "Accept": "application/json" } });
     if (!resp.ok) {
       const text = await resp.text().catch(() => "");
-      throw new Error(`Unpaywall search HTTP ${resp.status}: ${text.slice(0, 400)}`);
+      throw new Error(`OpenAlex search HTTP ${resp.status}: ${text.slice(0, 400)}`);
     }
-    return await resp.json();
+    const data: any = await resp.json();
+    return { ...mapOpenAlexWorksToUnpaywallSearch(data, query), _source: "openalex" };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function mapOpenAlexLocationToUnpaywall(loc: any) {
+  if (!loc || typeof loc !== "object") return null;
+  const sourceType = loc?.source?.type; // "journal" | "repository" | "ebook platform" | "book series" | ...
+  const host_type = sourceType === "repository" ? "repository" : sourceType ? "publisher" : undefined;
+  return {
+    url: loc.landing_page_url ?? null,
+    url_for_pdf: loc.pdf_url ?? null,
+    url_for_landing_page: loc.landing_page_url ?? null,
+    license: loc.license ?? null,
+    version: loc.version ?? null,
+    host_type: host_type ?? null,
+    is_best: !!loc.is_oa && !!loc.pdf_url,
+  };
+}
+
+function buildSnippet(title: string, query: string): string {
+  if (!title) return "";
+  const tokens = Array.from(
+    new Set(
+      query
+        .toLowerCase()
+        .split(/[^a-z0-9]+/i)
+        .filter((t) => t.length >= 2),
+    ),
+  );
+  if (tokens.length === 0) return title;
+  const escaped = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const re = new RegExp(`(${escaped.join("|")})`, "gi");
+  return title.replace(re, "<b>$1</b>");
+}
+
+function mapOpenAlexWorksToUnpaywallSearch(data: any, query: string) {
+  const works: any[] = Array.isArray(data?.results) ? data.results : [];
+  const results = works.map((w) => {
+    const doiUrl: string | null = w?.doi ?? null;
+    const normalizedDoi = doiUrl ? doiUrl.replace(/^https?:\/\/(dx\.)?doi\.org\//i, "") : null;
+    const title: string = w?.title ?? w?.display_name ?? "";
+    const openAccess = w?.open_access ?? {};
+    const best = mapOpenAlexLocationToUnpaywall(w?.best_oa_location);
+    // Unpaywall's oa_locations is OA-only by definition; OpenAlex's
+    // work.locations returns every location including closed publisher landing
+    // pages, so filter on is_oa first to avoid mislabeling paywalled links.
+    const locs: any[] = Array.isArray(w?.locations) ? w.locations.filter((l: any) => l?.is_oa === true) : [];
+    const oa_locations = locs.map(mapOpenAlexLocationToUnpaywall).filter((l) => l && (l.url || l.url_for_pdf));
+    return {
+      response: {
+        doi: normalizedDoi,
+        doi_url: doiUrl,
+        title,
+        is_oa: typeof openAccess.is_oa === "boolean" ? openAccess.is_oa : null,
+        oa_status: openAccess.oa_status ?? null,
+        best_oa_location: best,
+        oa_locations,
+      },
+      score: typeof w?.relevance_score === "number" ? w.relevance_score : null,
+      snippet: buildSnippet(title, query),
+    };
+  });
+  return {
+    results,
+    meta: {
+      count: data?.meta?.count ?? null,
+      page: data?.meta?.page ?? null,
+      per_page: data?.meta?.per_page ?? null,
+    },
+  };
 }
 
 async function main() {
@@ -149,7 +231,8 @@ async function main() {
         },
         {
           name: TOOL_SEARCH_TITLES,
-          description: "Search Unpaywall for article titles matching a query. Supports optional is_oa filter and pagination (50 results per page).",
+          description:
+            "Search article titles and return Unpaywall-style open-access metadata for each hit. Supports optional is_oa filter and pagination (50 results per page). Backed by OpenAlex's /works endpoint because Unpaywall's own /v2/search has been returning HTTP 500 since its May 2025 rewrite; response shape still mirrors Unpaywall's documented search result (results[].response is a DOI record, results[].score, results[].snippet).",
           inputSchema: {
             type: "object",
             properties: {
@@ -225,7 +308,7 @@ async function main() {
         const doi = normalizeDoi(rawDoi);
         const data = await fetchUnpaywallByDoi(doi, email);
         return {
-          content: [{ type: "json", json: data }],
+          content: [{ type: "text", text: JSON.stringify(data, null, 2) }],
         };
       }
       if (tool === TOOL_SEARCH_TITLES) {
@@ -240,8 +323,8 @@ async function main() {
         }
         const page = args.page && Number.isFinite(args.page) ? Math.max(1, Math.floor(Number(args.page))) : undefined;
         const is_oa = typeof args.is_oa === "boolean" ? args.is_oa : undefined;
-        const data = await searchUnpaywallTitles({ query, email, is_oa, page });
-        return { content: [{ type: "json", json: data }] };
+        const data = await searchTitlesViaOpenAlex({ query, email, is_oa, page });
+        return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
       }
       if (tool === TOOL_GET_FULLTEXT_LINKS) {
         const args = (req.params.arguments ?? {}) as Partial<GetByDoiArgs>;
@@ -270,7 +353,7 @@ async function main() {
           best_oa_location: best,
           oa_locations: locations,
         };
-        return { content: [{ type: "json", json: result }] };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       }
       if (tool === TOOL_FETCH_PDF_TEXT) {
         const args = (req.params.arguments ?? {}) as Partial<FetchPdfTextArgs>;
@@ -315,7 +398,7 @@ async function main() {
             metadata: parsed.metadata ?? undefined,
           },
         };
-        return { content: [{ type: "json", json: output }] };
+        return { content: [{ type: "text", text: JSON.stringify(output, null, 2) }] };
       }
 
       return {
