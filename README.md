@@ -1,3 +1,5 @@
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/elliotpadfield-unpaywall-mcp-badge.png)](https://mseep.ai/app/elliotpadfield-unpaywall-mcp)
+
 # Unpaywall MCP Server
 [![npm version](https://img.shields.io/npm/v/unpaywall-mcp.svg)](https://www.npmjs.com/package/unpaywall-mcp)
 [![CI](https://github.com/ElliotPadfield/unpaywall-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ElliotPadfield/unpaywall-mcp/actions/workflows/ci.yml)
